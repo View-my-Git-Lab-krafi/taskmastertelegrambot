@@ -1,0 +1,33 @@
+{
+  "name": "glitch-hello-node",
+  "version": "0.1.0",
+  "description": "A simple Node app built on express, instantly up and running.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "body-parser": "^1.20.3",
+    "node-telegram-bot-api": "^0.66.0",
+    "node-cron": "^3.0.3",
+    "sqlite3": "^5.1.7",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^16.0.0",
+    "express-session": "1.18.0"
+  },
+  "engines": {
+    "node": "14.x"
+  },
+  "repository": {
+    "url": "https://glitch.com/edit/#!/glitch-hello-node"
+  },
+  "license": "MIT",
+  "keywords": [
+    "node",
+    "express",
+    "glitch"
+  ]
+}
+
