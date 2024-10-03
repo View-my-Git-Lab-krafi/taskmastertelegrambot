@@ -15,10 +15,12 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^16.0.0",
-    "express-session": "1.18.0"
+    "express-session": "1.18.0",
+    "moment-timezone": "0.5.45",
+    "openai": "4.67.1"
   },
   "engines": {
-    "node": "14.x"
+    "node": "16"
   },
   "repository": {
     "url": "https://glitch.com/edit/#!/glitch-hello-node"
@@ -30,4 +32,3 @@
     "glitch"
   ]
 }
-
