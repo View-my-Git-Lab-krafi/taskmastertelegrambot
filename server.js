@@ -6,13 +6,23 @@ const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
 const sqlite3 = require('sqlite3').verbose();
 const OpenAI = require('openai'); 
+const fetch = require('node-fetch'); 
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(session({ secret: 'your_secret_key', resave: false, saveUninitialized: true }));
 
+
+const fs = require('fs');
 const db = new sqlite3.Database('./deadlines.db');
+const path = require('path');
+
+const { exec } = require('child_process');
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html')); 
+});
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS deadlines (
@@ -37,9 +47,146 @@ function isAdmin(userId) {
 function adjustToMoscowTime(date) {
   return new Date(date.getTime() + 5 * 60 * 60 * 1000);
 }
+bot.onText(/\/bria (.+)/, async (msg, match) => {
+  const userPrompt = match[1];
+  const chatId = msg.chat.id;
+
+  const username = msg.from.username || msg.from.first_name || 'Пользователь';
+
+  if (!userPrompt) {
+    return bot.sendMessage(chatId, 'Пожалуйста, введите описание для генерации изображения.');
+  }
+
+  const payload = {
+    "prompt": userPrompt,
+    "cfg_scale": 5,
+    "aspect_ratio": "1:1",
+    "seed": 0,
+    "steps": 30,
+    "negative_prompt": ""
+  };
+
+  try {
+    // Call NVIDIA API
+    const response = await fetch("https://ai.api.nvidia.com/v1/genai/briaai/bria-2.3", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      let errBody = await response.text();
+      throw new Error(`Ошибка: ${response.status} ${errBody}`);
+    }
+
+    const responseBody = await response.json();
+    
+    const imageBase64 = responseBody.image;
+    if (!imageBase64) {
+      throw new Error('Ошибка, krafi.info');
+    }
+
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+    bot.sendPhoto(chatId, imageBuffer, {
+      caption: `@${username}, вот ваше изображение на основе запроса: "${userPrompt}"`
+    });
+  } catch (error) {
+    console.error('Error generating image:', error);
+    bot.sendMessage(chatId, `@${username}, произошла ошибка при генерации изображения. Попробуйте позже.`);
+  }
+});
+
+
+bot.onText(/\/ai (.+)/, async (msg, match) => {
+  const userId = msg.from.id;
+  const userQuery = match[1]; 
+
+  if (!userQuery) {
+    return bot.sendMessage(msg.chat.id, 'Вы учитель информатики. /ai.');
+  }
+
+  const username = msg.from.username || msg.from.first_name || 'Пользователь';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "meta/llama-3.1-405b-instruct",
+      messages: [
+        { "role": "system", "content": "Вы специалист по компьютерным наукам" },
+        { "role": "user", "content": userQuery }
+      ],
+      temperature: 0.9,
+      top_p: 0.2,
+      max_tokens: 140,
+      stream: false, 
+    });
+
+    const botResponse = completion.choices[0].message.content;
+
+    bot.sendMessage(msg.chat.id, `ребята ,${username} ${botResponse}`, {
+      reply_to_message_id: msg.message_id 
+    });
+  } catch (error) {
+    bot.sendMessage(msg.chat.id, `${username}, произошла ошибка. Попробуйте позже.`, {
+      reply_to_message_id: msg.message_id
+    });
+    console.error('Error interacting with Llama 3:', error);
+  }
+});
+
+bot.onText(/\/bigai (.+)/, async (msg, match) => {
+  const userId = msg.from.id;
+  const userQuery = match[1];
+
+  if (!userQuery) {
+    return bot.sendMessage(msg.chat.id, 'Пожалуйста, введите вопрос после команды /ai.');
+  }
+
+  const username = msg.from.username || msg.from.first_name || 'Пользователь';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "meta/llama-3.1-405b-instruct",
+      messages: [
+        { "role": "system", "content": "Вы объясняете вещи легко и с удовольствием, используя примеры из реальной жизни." },
+        { "role": "user", "content": userQuery }
+      ],
+      temperature: 0.2,
+      top_p: 0.7,
+      max_tokens: 1024,
+      stream: false,
+    });
+
+    const botResponse = completion.choices[0].message.content;
+    bot.sendMessage(msg.chat.id, `@${username} ${botResponse}`, {
+      reply_to_message_id: msg.message_id
+    });
+  } catch (error) {
+    bot.sendMessage(msg.chat.id, 'Ошибка. www.krafi.info', {
+      reply_to_message_id: msg.message_id
+    });
+    console.error('Error interacting with Llama 3:', error);
+  }
+});
+
 bot.on('message', async (msg) => {
+  // If the message is a command (starts with '/'), do not process in this handler
+  if (msg.text && msg.text.startsWith('/')) {
+    return;
+  }
+
+  // Check if the message contains certain media or only punctuation
+  if (!msg.text || /^[.]+$/.test(msg.text) || msg.photo || msg.video || msg.document || msg.sticker || msg.animation || msg.voice || msg.audio) {
+    return;
+  }
+
+  // If the message is a reply to a bot message
   if (msg.reply_to_message && msg.reply_to_message.from.is_bot) {
     const userMessage = msg.text;
+    const username = msg.from.username || msg.from.first_name || 'Пользователь';
 
     try {
       const completion = await openai.chat.completions.create({
@@ -55,16 +202,41 @@ bot.on('message', async (msg) => {
       });
 
       const botResponse = completion.choices[0].message.content;
-      bot.sendMessage(msg.chat.id, botResponse);
+      bot.sendMessage(msg.chat.id, `@${username} ${botResponse}`, {
+        reply_to_message_id: msg.message_id
+      });
     } catch (error) {
-      bot.sendMessage(msg.chat.id, 'Ошибка получения ответа от Llama 3.');
-      console.error('Error interacting with Llama 3:', error);
+      bot.sendMessage(msg.chat.id, 'Ошибка, krafi.info ', {
+        reply_to_message_id: msg.message_id
+      });
+      console.error('Error interacting with Llama 3.1:', error);
     }
   }
 });
 
+bot.onText(/\/del/, (msg) => {
+  const chatId = msg.chat.id;
+
+  if (msg.reply_to_message) {
+    const messageId = msg.reply_to_message.message_id;
+
+    bot.deleteMessage(chatId, messageId)
+      .then(() => {
+      })
+      .catch((error) => {
+        console.error('Ошибка удаления сообщения:', error);
+        bot.sendMessage(chatId, 'Не удалось удалить сообщение.');
+      });
+  } else {
+    bot.sendMessage(chatId, 'Эта команда должна быть ответом на сообщение, которое вы хотите удалить.');
+  }
+});
+
+
+
 bot.onText(/\/translate (.+)/, async (msg, match) => {
   const userQuery = match[1]; 
+  const username = msg.from.username || msg.from.first_name || 'Пользователь';
 
   if (!userQuery) {
     return bot.sendMessage(msg.chat.id, 'Пожалуйста, введите текст для перевода.');
@@ -83,71 +255,16 @@ bot.onText(/\/translate (.+)/, async (msg, match) => {
     });
 
     const botResponse = completion.choices[0].message.content;
-    bot.sendMessage(msg.chat.id, botResponse);
+    bot.sendMessage(msg.chat.id, `@${username} ${botResponse}`, {
+      reply_to_message_id: msg.message_id
+    });
   } catch (error) {
-    bot.sendMessage(msg.chat.id, 'Ошибка перевода текста.');
+    bot.sendMessage(msg.chat.id, 'Ошибка, krafi.info', {
+      reply_to_message_id: msg.message_id
+    });
     console.error('Error translating the text:', error);
   }
 });
-
-bot.onText(/\/ai (.+)/, async (msg, match) => {
-  const userId = msg.from.id;
-  const userQuery = match[1]; 
-
-  if (!userQuery) {
-    return bot.sendMessage(msg.chat.id, 'Вы учитель информатики. /ai.');
-  }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "meta/llama-3.1-405b-instruct",
-      messages: [
-        { "role": "system", "content": "Вы специалист по компьютерным наукам" },
-        { "role": "user", "content": userQuery }
-      ],
-      temperature: 0.9,
-      top_p: 0.2,
-      max_tokens: 140,
-      stream: false, 
-    });
-
-    const botResponse = completion.choices[0].message.content;
-    bot.sendMessage(msg.chat.id, botResponse);
-  } catch (error) {
-    bot.sendMessage(msg.chat.id, 'Ошибка. www.krafi.info');
-    console.error('Error interacting with Llama 3:', error);
-  }
-});
-
-bot.onText(/\/bigai (.+)/, async (msg, match) => {
-  const userId = msg.from.id;
-  const userQuery = match[1];
-
-  if (!userQuery) {
-    return bot.sendMessage(msg.chat.id, 'Пожалуйста, введите вопрос после команды /ai.');
-  }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "meta/llama-3.1-405b-instruct",
-      messages: [
-        { "role": "system", "content": "Вы объясняете вещи легко и с удовольствием, используя примеры из реальной жизни." },
-        { "role": "user", "content": userQuery }
-      ],
-      temperature: 0.2,
-      top_p: 0.7,
-      max_tokens: 1024,
-      stream: false,
-    });
-
-    const botResponse = completion.choices[0].message.content;
-    bot.sendMessage(msg.chat.id, botResponse);
-  } catch (error) {
-    bot.sendMessage(msg.chat.id, 'Ошибка. www.krafi.info');
-    console.error('Error interacting with Llama 3:', error);
-  }
-});
-
 
 bot.onText(/\/help/, (msg) => {
   const helpMessage = `
@@ -193,7 +310,7 @@ bot.onText(/\/add (.+) (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/, (msg, match) => {
   const stmt = db.prepare('INSERT INTO deadlines (userId, title, date) VALUES (?, ?, ?)');
   stmt.run(userId, title, date.toISOString(), function(err) {
     if (err) {
-      return bot.sendMessage(msg.chat.id, 'Ошибка при добавлении дедлайна.');
+      return bot.sendMessage(msg.chat.id, 'Ошибка, krafi.info');
     }
     bot.sendMessage(msg.chat.id, `Дедлайн добавлен: ${title} на ${date.toLocaleString('ru-RU')}`);
   });
@@ -222,7 +339,7 @@ bot.onText(/\/modify (\d+) (.+) (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/, (msg, match) =
 
   db.run('UPDATE deadlines SET title = ?, date = ? WHERE id = ?', [newTitle, newDate.toISOString(), id], function(err) {
     if (err) {
-      return bot.sendMessage(msg.chat.id, 'Ошибка при обновлении дедлайна.');
+      return bot.sendMessage(msg.chat.id, 'Ошибка, krafi.info');
     }
     bot.sendMessage(msg.chat.id, `Дедлайн обновлен: ${newTitle} на ${newDate.toLocaleString('ru-RU')}`);
   });
@@ -243,7 +360,7 @@ bot.onText(/\/rm (\d+)/, (msg, match) => {
 
   db.run('DELETE FROM deadlines WHERE id = ?', id, function(err) {
     if (err) {
-      return bot.sendMessage(msg.chat.id, 'Ошибка при удалении дедлайна.');
+      return bot.sendMessage(msg.chat.id, 'Ошибка , krafi.info');
     }
     bot.sendMessage(msg.chat.id, 'Дедлайн удален.');
   });
@@ -256,7 +373,7 @@ bot.onText(/\/lt/, (msg) => {
 
   db.all('SELECT * FROM deadlines WHERE date BETWEEN ? AND ?', [pastDate.toISOString(), now.toISOString()], (err, rows) => {
     if (err) {
-      return bot.sendMessage(msg.chat.id, 'Ошибка при получении задач.');
+      return bot.sendMessage(msg.chat.id, 'Ошибка, krafi.info');
     }
     
     if (rows.length > 0) {
@@ -278,7 +395,7 @@ bot.onText(/\/ut/, (msg) => {
 
   db.all('SELECT * FROM deadlines WHERE date BETWEEN ? AND ?', [now.toISOString(), upcomingDate.toISOString()], (err, rows) => {
     if (err) {
-      return bot.sendMessage(msg.chat.id, 'Ошибка при получении задач.');
+      return bot.sendMessage(msg.chat.id, 'Ошибка krafi.info');
     }
 
     if (rows.length > 0) {
@@ -294,6 +411,7 @@ bot.onText(/\/ut/, (msg) => {
     }
   });
 });
+
 
 function calculateTimeRemaining(targetDate, currentDate) {
   const diff = targetDate - currentDate;
