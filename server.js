@@ -47,10 +47,21 @@ function isAdmin(userId) {
 function adjustToMoscowTime(date) {
   return new Date(date.getTime() + 5 * 60 * 60 * 1000);
 }
+
+
+const allowedGroupIds = process.env.ALLOWED_GROUP_IDS.split(',').map(id => id.trim());
+
+function isAllowedGroup(chatId) {
+  return allowedGroupIds.includes(chatId.toString());
+}
+
 bot.onText(/\/bria (.+)/, async (msg, match) => {
   const userPrompt = match[1];
   const chatId = msg.chat.id;
 
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   const username = msg.from.username || msg.from.first_name || 'Пользователь';
 
   if (!userPrompt) {
@@ -67,7 +78,6 @@ bot.onText(/\/bria (.+)/, async (msg, match) => {
   };
 
   try {
-    // Call NVIDIA API
     const response = await fetch("https://ai.api.nvidia.com/v1/genai/briaai/bria-2.3", {
       method: "POST",
       headers: {
@@ -104,7 +114,11 @@ bot.onText(/\/bria (.+)/, async (msg, match) => {
 bot.onText(/\/ai (.+)/, async (msg, match) => {
   const userId = msg.from.id;
   const userQuery = match[1]; 
+  const chatId = msg.chat.id;
 
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   if (!userQuery) {
     return bot.sendMessage(msg.chat.id, 'Вы учитель информатики. /ai.');
   }
@@ -120,7 +134,7 @@ bot.onText(/\/ai (.+)/, async (msg, match) => {
       ],
       temperature: 0.9,
       top_p: 0.2,
-      max_tokens: 140,
+      max_tokens: 180,
       stream: false, 
     });
 
@@ -140,7 +154,11 @@ bot.onText(/\/ai (.+)/, async (msg, match) => {
 bot.onText(/\/bigai (.+)/, async (msg, match) => {
   const userId = msg.from.id;
   const userQuery = match[1];
+  const chatId = msg.chat.id;
 
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   if (!userQuery) {
     return bot.sendMessage(msg.chat.id, 'Пожалуйста, введите вопрос после команды /ai.');
   }
@@ -173,17 +191,20 @@ bot.onText(/\/bigai (.+)/, async (msg, match) => {
 });
 
 bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   // If the message is a command (starts with '/'), do not process in this handler
   if (msg.text && msg.text.startsWith('/')) {
     return;
   }
 
-  // Check if the message contains certain media or only punctuation
   if (!msg.text || /^[.]+$/.test(msg.text) || msg.photo || msg.video || msg.document || msg.sticker || msg.animation || msg.voice || msg.audio) {
     return;
   }
 
-  // If the message is a reply to a bot message
   if (msg.reply_to_message && msg.reply_to_message.from.is_bot) {
     const userMessage = msg.text;
     const username = msg.from.username || msg.from.first_name || 'Пользователь';
@@ -197,7 +218,7 @@ bot.on('message', async (msg) => {
         ],
         temperature: 0.9,
         top_p: 0.2,
-        max_tokens: 120,
+        max_tokens: 150,
         stream: false,
       });
 
@@ -217,6 +238,10 @@ bot.on('message', async (msg) => {
 bot.onText(/\/del/, (msg) => {
   const chatId = msg.chat.id;
 
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
+
   if (msg.reply_to_message) {
     const messageId = msg.reply_to_message.message_id;
 
@@ -235,6 +260,11 @@ bot.onText(/\/del/, (msg) => {
 
 
 bot.onText(/\/translate (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   const userQuery = match[1]; 
   const username = msg.from.username || msg.from.first_name || 'Пользователь';
 
@@ -278,9 +308,11 @@ bot.onText(/\/help/, (msg) => {
 6. **/ai <вопрос>** - Получить ответ на вопрос с помощью искусственного интеллекта.
 7. **/bigai <вопрос>** - Получить более детализированный ответ с использованием искусственного интеллекта.
 8. **/translate <текст>** - Перевести любой текст на русский язык.
-9. **/help** - Показать это сообщение с инструкциями.
+9. **/bria <описание>** - Сгенерировать изображение по описанию.
+10. **/del** - Удалить сообщение (ответ на сообщение).
+11. **/help** - Показать это сообщение с инструкциями.
 
-Пожалуйста, не используйте /bigai без причины, иначе групповая беседа превратится в мусор."
+Пожалуйста, не используйте /bigai без причины, иначе групповая беседа превратится в мусор.  
 Только администраторы могут добавлять, изменять или удалять дедлайны.
 
 www.krafi.info email@krafi.info
@@ -288,9 +320,15 @@ www.krafi.info email@krafi.info
   bot.sendMessage(msg.chat.id, helpMessage);
 });
 
+
+
 bot.onText(/\/add (.+) (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/, (msg, match) => {
   const userId = msg.from.id;
+  const chatId = msg.chat.id;
 
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   if (!isAdmin(userId)) {
     return bot.sendMessage(msg.chat.id, 'У вас нет прав на выполнение этой команды.');
   }
@@ -319,7 +357,11 @@ bot.onText(/\/add (.+) (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/, (msg, match) => {
 
 bot.onText(/\/modify (\d+) (.+) (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/, (msg, match) => {
   const userId = msg.from.id;
+  const chatId = msg.chat.id;
 
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   if (!isAdmin(userId)) {
     return bot.sendMessage(msg.chat.id, 'У вас нет прав на выполнение этой команды.');
   }
@@ -347,7 +389,11 @@ bot.onText(/\/modify (\d+) (.+) (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/, (msg, match) =
 
 bot.onText(/\/rm (\d+)/, (msg, match) => {
   const userId = msg.from.id;
+  const chatId = msg.chat.id;
 
+  if (!isAllowedGroup(chatId)) {
+    return bot.sendMessage(chatId, 'Этот бот не предназначен для использования в этой группе.');
+  }
   if (!isAdmin(userId)) {
     return bot.sendMessage(msg.chat.id, 'У вас нет прав на выполнение этой команды.');
   }
