@@ -1,93 +1,112 @@
-# TaskMasterTelegramBot
+# Telegram Bot with Deadline Management and AI Integration
 
+## Overview
+This project implements a Telegram bot that helps users manage deadlines and utilize AI to answer questions, generate images, and translate text. It uses various APIs like OpenAI, NVIDIA's AI image generation, and SQLite for database management.
 
+The bot provides functionalities like adding, updating, deleting, and listing deadlines, as well as AI-powered features such as answering user queries, translating text, and generating images.
 
-## Getting started
+## Features
+- **Deadline Management**: 
+  - Add, update, and delete deadlines.
+  - List past and upcoming deadlines.
+  - Scheduled reminders for deadlines.
+  
+- **AI Integration**:
+  - Answer questions using OpenAI's Llama model.
+  - Generate AI-based images using NVIDIA's Bria API.
+  - Translate text into Russian using OpenAI's translation capabilities.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- **Admin Controls**: Only admins can modify deadlines.
+  
+- **Multimedia Handling**: 
+  - Can handle multimedia files like images, documents, and audio.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/krafi/taskmastertelegrambot.git
-git branch -M main
-git push -uf origin main
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.com/krafi/taskmastertelegrambot/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## Requirements
+- **Node.js** (>=14.x)
+- **npm** (>=6.x)
+- **SQLite3**
+- A **Telegram Bot Token** (from [BotFather](https://core.telegram.org/bots#botfather))
+- An **OpenAI API Key** (from [OpenAI](https://platform.openai.com/signup))
+- An **NVIDIA AI API Key** (from [NVIDIA](https://developer.nvidia.com/gen-ai))
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/telegram-bot-deadline-ai.git
+   cd telegram-bot-deadline-ai
+   ```
+
+2. Install the dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file in the root directory:
+   ```
+   TELEGRAM_TOKEN=<your-telegram-bot-token>
+   OPENAI_API_KEY=<your-openai-api-key>
+   ADMIN_IDS=<admin-telegram-id-1>,<admin-telegram-id-2>
+   CHAT_ID=<default-chat-id>
+   PORT=<port-number> (optional, defaults to 3000)
+   ```
+
+4. Start the bot:
+   ```bash
+   npm start
+   ```
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Bot Commands:
+1. **/add `<title>` `<YYYY-MM-DD HH:MM>`**  
+   Add a deadline. Example: `/add Project 2024-12-01 14:00`
+   
+2. **/modify `<id>` `<new-title>` `<YYYY-MM-DD HH:MM>`**  
+   Modify a deadline. Example: `/modify 1 UpdatedProject 2024-12-05 16:00`
+   
+3. **/rm `<id>`**  
+   Delete a deadline. Example: `/rm 1`
+   
+4. **/lt**  
+   List tasks from the last 10 days.
+   
+5. **/ut**  
+   List upcoming tasks within the next 10 days.
+   
+6. **/ai `<query>`**  
+   Ask AI a question. Example: `/ai What is the capital of France?`
+   
+7. **/bigai `<query>`**  
+   Get a more detailed AI response.
+   
+8. **/translate `<text>`**  
+   Translate any text to Russian. Example: `/translate Hello, how are you?`
+   
+9. **/bria `<image-description>`**  
+   Generate an image using NVIDIA's AI. Example: `/bria A cat sitting on a chair`
+   
+10. **/del**  
+    Delete a bot message. Must reply to the bot's message to delete it.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+11. **/help**  
+    Display help message with available commands.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+### Scheduled Reminders
+The bot checks deadlines twice a day (12:00 AM and 12:00 PM) and sends reminders to the chat.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### AI-based Interactions
+- The bot can respond to regular text messages in the chat and provide AI-generated replies.
+- To reply to a specific message, use `/ai` or `/bigai`.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## Database
+The deadlines are stored in an SQLite database (`deadlines.db`). It is created automatically when you run the bot for the first time.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Cron Jobs
+The bot runs a cron job that checks for upcoming deadlines every 12 hours and sends reminders for tasks that are due soon.
 
 ## License
-For open source projects, say how it is licensed.
+This project is licensed under the GPL-3 License.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+For more information or questions, visit [krafi.info](https://www.krafi.info) or email at `email@krafi.info`.
+
